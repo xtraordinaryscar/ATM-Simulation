@@ -2,6 +2,8 @@
 #include <fstream>
 #include <cstdlib>
 #include <sstream>
+#include <conio.h>
+#include <string>
 using namespace std;
 
 struct User {
@@ -48,7 +50,7 @@ public:
     void retrieve();
     string encrypt(string pin);
     string decrypt(string pin);
-    void displayTester();
+    void displayTester(); //for debugging purposes
 };
 
 int logInSignUp();
@@ -60,19 +62,39 @@ int main() {
     Account acc;
     acc.retrieve();
     User y;
-    string pinTemp;
 
     while (true) {
+        string pinTemp = "";
+        char ch;
+
         switch(logInSignUp()) {
         case 1:
             system("cls");
             cout << "Account number: ";
             cin >> y.accountNum;
             cout << "Pin: ";
-            cin.ignore();
-            getline(cin, y.pin);
+            for (int i = 0; i < 6; i++) {
+                ch = _getch();
 
-            if (acc.logIn(y.accountNum, y.pin)) {
+                if (ch == 13) {
+                    break;
+                } else if (ch == 8) {
+                    if (!pinTemp.empty()) {
+                        pinTemp.pop_back();
+                        cout << "\b \b";
+                        i -= 2;
+                    } else {
+                        i--;
+                    }
+                } else if (isdigit(ch)) {
+                    pinTemp.push_back(ch);
+                    cout << "*";
+                } else {
+                    i--;
+                }
+            }
+
+            if (acc.logIn(y.accountNum, pinTemp)) {
                 while (true) {
                     switch(transactionMenu()) {
                         int amount;
@@ -85,12 +107,14 @@ int main() {
                         cout << "Enter amount: ";
                         cin >> amount;
                         acc.withdraw(amount);
+                        acc.save();
                         break;
                     case 3:
                         system("cls");
                         cout << "Enter amount: ";
                         cin >> amount;
                         acc.deposit(amount);
+                        acc.save();
                         break;
                     case 4:
                         system("cls");
@@ -99,13 +123,37 @@ int main() {
                         cout << "Enter amount to transfer: ";
                         cin >> amount;
                         acc.fundTransfer(y.accountNum, amount);
+                        acc.save();
                         break;
-                    case 5:
+                    case 5: {
+                        string newPin = "";
+                        char c;
                         cout << "Enter new pin: ";
-                        cin.ignore();
-                        getline(cin, y.pin);
-                        acc.changePin(y.pin);
+
+                        for (int i = 0; i < 6; i++) {
+                            c = _getch();
+
+                            if (c == 13) {
+                                break;
+                            } else if (c == 8) {
+                                if (!newPin.empty()) {
+                                    newPin.pop_back();
+                                    cout << "\b \b";
+                                    i -= 2;
+                                } else {
+                                    i--;
+                                }
+                            } else if (isdigit(c)) {
+                                newPin.push_back(c);
+                                cout << "*";
+                            } else {
+                                i--;
+                            }
+                        }
+                        acc.changePin(newPin);
+                        acc.save();
                         break;
+                        }
                     case 6:
                         acc.save();
                         exit(0);
@@ -118,8 +166,15 @@ int main() {
             break;
         case 2:
             system("cls");
-            cout << "Account number: ";
+            cout << "Account number (5 digits): ";
             cin >> y.accountNum;
+
+            if (to_string(y.accountNum).length() != 5) {
+                cout << "\nAccount number should be 5 digits" << endl;
+                system("pause");
+                break;
+            }
+
             cout << "Account name: ";
             cin.ignore();
             getline(cin, y.accountName);
@@ -130,18 +185,39 @@ int main() {
             cout << "Initial deposit (5000 minimum): ";
             cin >> y.balance;
             if (y.balance < 5000) {
-                cout << "\n\nThat's less than 5000" << endl;
+                cout << "\nThat's less than 5000" << endl;
                 system("pause");
                 break;
             }
+
+            //pin
             cout << "Pin code: ";
-            cin.ignore();
-            getline(cin, pinTemp);
+            for (int i = 0; i < 6; i++) {
+                ch = _getch();
+
+                if (ch == 13) {
+                    break;
+                } else if (ch == 8) {
+                    if (!pinTemp.empty()) {
+                        pinTemp.pop_back();
+                        cout << "\b \b";
+                        i -= 2;
+                    } else {
+                        i--;
+                    }
+                } else if (isdigit(ch)) {
+                    pinTemp.push_back(ch);
+                    cout << "*";
+                } else {
+                    i--;
+                }
+            }
+
             y.pin = acc.encrypt(pinTemp);
             acc.signUp(y);
             acc.save();
 
-            cout << "Account registered" << endl;
+            cout << "\n\nAccount registered" << endl;
             system("pause");
             break;
         case 3:
@@ -151,7 +227,7 @@ int main() {
             acc.displayTester(); //temporary account checker for debugging
             break;
         default:
-            cout << "Invalid input" << endl;
+            cout << "\nInvalid input" << endl;
             system("pause");
         }
     }
@@ -234,13 +310,13 @@ bool Account::logIn(int accountNum, string pin) {
     }
 
     if (p == nullptr) {
-        cout << "Account does not exist" << endl;
+        cout << "\n\nAccount does not exist" << endl;
         system("pause");
         return false;
     }
 
     if (pin != decrypt(p->user.pin)) {
-        cout << "Wrong pin" << endl;
+        cout << "\n\nWrong pin" << endl;
         system("pause");
         return false;
     }
@@ -248,7 +324,7 @@ bool Account::logIn(int accountNum, string pin) {
     currentlyLoggedIn = p;
 
 
-    cout << "Logged in successful" << endl;
+    cout << "\n\nLog in successful" << endl;
     system("pause");
 
     return true;
@@ -335,21 +411,21 @@ void Account::balanceInquiry() {
 
 void Account::withdraw(double amount) {
     if (amount > getBalance()) {
-        cout << "Not enough balance" << endl;
+        cout << "\nNot enough balance" << endl;
         system("pause");
     } else {
         currentlyLoggedIn->user.balance -= amount;
-        cout << "Successful Transaction" << endl;
+        cout << "\nSuccessful Transaction" << endl;
         system("pause");
     }
 }
 void Account::deposit(double amount) {
     if (amount < 0) {
-        cout << "Invalid" << endl;
+        cout << "\nInvalid" << endl;
         system("pause");
     } else {
         currentlyLoggedIn->user.balance += amount;
-        cout << "Successful Transaction" << endl;
+        cout << "\nSuccessful Transaction" << endl;
         system("pause");
     }
 }
@@ -359,7 +435,7 @@ void Account::fundTransfer(int accountNum, double amount) {
     p = head;
 
     if (amount > getBalance()) {
-        cout << "Not enough balance" << endl;
+        cout << "\nNot enough balance" << endl;
         system("pause");
         return;
     }
@@ -369,7 +445,7 @@ void Account::fundTransfer(int accountNum, double amount) {
     }
 
     if (p == nullptr) {
-        cout << "Account does not exist" << endl;
+        cout << "\nAccount does not exist" << endl;
         system("pause");
         return;
     }
@@ -377,13 +453,13 @@ void Account::fundTransfer(int accountNum, double amount) {
     p->user.balance += amount;
     currentlyLoggedIn->user.balance -= amount;
 
-    cout << "Fund transefered successfully" << endl;
+    cout << "\nFund transefered successfully" << endl;
     system("pause");
 }
 
 void Account::changePin(string pin) {
     currentlyLoggedIn->user.pin = encrypt(pin);
 
-    cout << "Pin updated" << endl;
+    cout << "\nPin updated" << endl;
     system("pause");
 }
